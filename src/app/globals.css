@@ -668,19 +668,21 @@ select:focus {
     width: 100%;
   }
 
-  /* Preview frame */
+  /* Preview frame — always 1 row */
   .preview-frame {
+    flex-wrap: nowrap;
+    overflow: hidden;
     padding: 20px 14px;
     min-height: 200px;
     gap: 0;
   }
 
   .preview-frame img {
-    width: 120px;
+    width: clamp(90px, 26vw, 120px);
   }
 
   .preview-card-item {
-    margin-right: -55px;
+    margin-right: clamp(-50px, -13vw, -40px);
   }
 
   /* Footer */
