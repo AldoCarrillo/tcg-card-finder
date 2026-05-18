@@ -137,13 +137,15 @@ export default function Home() {
 
       const cardFileName = previewCardName?.replace(/[^a-z0-9]/gi, "-").toLowerCase() || "card-preview";
 
+      // Convert data URL to blob URL — iOS Safari has a size cap on data URIs in <img>
+      const blob = await fetch(dataUrl).then((r) => r.blob());
+      const blobUrl = URL.createObjectURL(blob);
+
       if (isIOS) {
         // iOS Safari blocks programmatic downloads — show image in an overlay instead.
         // User long-presses the image and taps "Save to Photos".
-        setSavedImageUrl(dataUrl);
+        setSavedImageUrl(blobUrl);
       } else {
-        const blob = await fetch(dataUrl).then((r) => r.blob());
-        const blobUrl = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.download = `${cardFileName}.png`;
         link.href = blobUrl;
@@ -210,11 +212,11 @@ export default function Home() {
       <AppFooter />
 
       {savedImageUrl && (
-        <div className="ios-save-overlay" onClick={() => setSavedImageUrl(null)}>
+        <div className="ios-save-overlay" onClick={() => { URL.revokeObjectURL(savedImageUrl); setSavedImageUrl(null); }}>
           <div className="ios-save-box" onClick={(e) => e.stopPropagation()}>
             <p className="ios-save-hint">Long press the image and tap <strong>Save to Photos</strong></p>
             <img src={savedImageUrl} alt="Card preview" className="ios-save-image" />
-            <button className="ios-save-close" onClick={() => setSavedImageUrl(null)}>Close</button>
+            <button className="ios-save-close" onClick={() => { URL.revokeObjectURL(savedImageUrl); setSavedImageUrl(null); }}>Close</button>
           </div>
         </div>
       )}
