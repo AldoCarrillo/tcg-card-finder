@@ -99,6 +99,14 @@ export default function Home() {
       return;
     }
 
+    const isIOS =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+    // Open the window NOW while the gesture context is still active.
+    // iOS Safari blocks window.open called after any await.
+    const iosWindow = isIOS ? window.open("", "_blank") : null;
+
     try {
       setDownloading(true);
       setError("");
@@ -127,23 +135,38 @@ export default function Home() {
       const dataUrl = await toPng(previewRef.current, {
         cacheBust: false,
         backgroundColor: "#ffffff",
-        pixelRatio: 2,
+        pixelRatio: window.devicePixelRatio > 1 ? 1.5 : 2,
       });
 
       const cardFileName = previewCardName?.replace(/[^a-z0-9]/gi, "-").toLowerCase() || "card-preview";
 
-      // Convert data URL to blob URL — required for download to work on iOS Safari
-      const blob = await fetch(dataUrl).then((r) => r.blob());
-      const blobUrl = URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-      link.download = `${cardFileName}.png`;
-      link.href = blobUrl;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(blobUrl);
+      if (isIOS && iosWindow) {
+        // On iOS: render image into the pre-opened tab via DOM (document.write is deprecated).
+        // User can long-press → Save to Photos.
+        const doc = iosWindow.document;
+        doc.title = cardFileName;
+        doc.body.style.cssText = "margin:0;background:#111;display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:100vh;gap:16px;";
+        const img = doc.createElement("img");
+        img.src = dataUrl;
+        img.style.cssText = "max-width:100%;height:auto;border-radius:8px;";
+        const hint = doc.createElement("p");
+        hint.style.cssText = "color:#fff;font-family:sans-serif;font-size:14px;text-align:center;padding:0 20px;";
+        hint.textContent = "Long press the image and tap Save to Photos";
+        doc.body.appendChild(img);
+        doc.body.appendChild(hint);
+      } else {
+        const blob = await fetch(dataUrl).then((r) => r.blob());
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.download = `${cardFileName}.png`;
+        link.href = blobUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+      }
     } catch (err) {
+      if (iosWindow) iosWindow.close();
       setError("Download failed. Try clicking Add again, then Download Image.");
     } finally {
       setDownloading(false);
