@@ -24,6 +24,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [downloading, setDownloading] = useState(false);
   const [showSetBadge, setShowSetBadge] = useState(true);
+  const [savedImageUrl, setSavedImageUrl] = useState(null);
 
   const selectedImageUrl = card?.card_images?.[selectedArtworkIndex]?.image_url || "";
   const selectedSet = card?.card_sets?.[selectedSetIndex];
@@ -103,10 +104,6 @@ export default function Home() {
       /iPad|iPhone|iPod/.test(navigator.userAgent) ||
       (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
-    // Open the window NOW while the gesture context is still active.
-    // iOS Safari blocks window.open called after any await.
-    const iosWindow = isIOS ? window.open("", "_blank") : null;
-
     try {
       setDownloading(true);
       setError("");
@@ -140,20 +137,10 @@ export default function Home() {
 
       const cardFileName = previewCardName?.replace(/[^a-z0-9]/gi, "-").toLowerCase() || "card-preview";
 
-      if (isIOS && iosWindow) {
-        // On iOS: render image into the pre-opened tab via DOM (document.write is deprecated).
-        // User can long-press → Save to Photos.
-        const doc = iosWindow.document;
-        doc.title = cardFileName;
-        doc.body.style.cssText = "margin:0;background:#111;display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:100vh;gap:16px;";
-        const img = doc.createElement("img");
-        img.src = dataUrl;
-        img.style.cssText = "max-width:100%;height:auto;border-radius:8px;";
-        const hint = doc.createElement("p");
-        hint.style.cssText = "color:#fff;font-family:sans-serif;font-size:14px;text-align:center;padding:0 20px;";
-        hint.textContent = "Long press the image and tap Save to Photos";
-        doc.body.appendChild(img);
-        doc.body.appendChild(hint);
+      if (isIOS) {
+        // iOS Safari blocks programmatic downloads — show image in an overlay instead.
+        // User long-presses the image and taps "Save to Photos".
+        setSavedImageUrl(dataUrl);
       } else {
         const blob = await fetch(dataUrl).then((r) => r.blob());
         const blobUrl = URL.createObjectURL(blob);
@@ -166,7 +153,6 @@ export default function Home() {
         URL.revokeObjectURL(blobUrl);
       }
     } catch (err) {
-      if (iosWindow) iosWindow.close();
       setError("Download failed. Try clicking Add again, then Download Image.");
     } finally {
       setDownloading(false);
@@ -222,6 +208,16 @@ export default function Home() {
       />
 
       <AppFooter />
+
+      {savedImageUrl && (
+        <div className="ios-save-overlay" onClick={() => setSavedImageUrl(null)}>
+          <div className="ios-save-box" onClick={(e) => e.stopPropagation()}>
+            <p className="ios-save-hint">Long press the image and tap <strong>Save to Photos</strong></p>
+            <img src={savedImageUrl} alt="Card preview" className="ios-save-image" />
+            <button className="ios-save-close" onClick={() => setSavedImageUrl(null)}>Close</button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
