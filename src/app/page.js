@@ -130,11 +130,19 @@ export default function Home() {
         pixelRatio: 2,
       });
 
-      const link = document.createElement("a");
       const cardFileName = previewCardName?.replace(/[^a-z0-9]/gi, "-").toLowerCase() || "card-preview";
+
+      // Convert data URL to blob URL — required for download to work on iOS Safari
+      const blob = await fetch(dataUrl).then((r) => r.blob());
+      const blobUrl = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
       link.download = `${cardFileName}.png`;
-      link.href = dataUrl;
+      link.href = blobUrl;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
     } catch (err) {
       setError("Download failed. Try clicking Add again, then Download Image.");
     } finally {
