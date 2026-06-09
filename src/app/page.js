@@ -161,16 +161,19 @@ export default function Home() {
     for (let i = 0; i < n; i++) {
       const res = await fetch(previewCards[i].imageUrl, { cache: "no-store" });
       const blob = await res.blob();
-      const objUrl = URL.createObjectURL(blob);
+      const dataUrl = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      });
       await new Promise((resolve, reject) => {
         const img = new Image();
         img.onload = () => {
           ctx.drawImage(img, PAD + i * (CARD_W - OVERLAP), PAD, CARD_W, CARD_H);
-          URL.revokeObjectURL(objUrl);
           resolve();
         };
         img.onerror = reject;
-        img.src = objUrl;
+        img.src = dataUrl;
       });
     }
 
@@ -188,7 +191,7 @@ export default function Home() {
       ctx.fillText(text, bx + 5, by + 13);
     }
 
-    return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    return canvas.toDataURL("image/png");
   }
 
   async function handleDownloadImage() {
@@ -206,9 +209,8 @@ export default function Home() {
       setError("");
 
       if (isIOS) {
-        const blob = await capturePreviewForIOS();
-        const blobUrl = URL.createObjectURL(blob);
-        setSavedImageUrl(blobUrl);
+        const dataUrl = await capturePreviewForIOS();
+        setSavedImageUrl(dataUrl);
       } else {
         const imgElements = Array.from(previewRef.current.querySelectorAll("img"));
 
@@ -312,11 +314,11 @@ export default function Home() {
       <AppFooter />
 
       {savedImageUrl && (
-        <div className="ios-save-overlay" onClick={() => { URL.revokeObjectURL(savedImageUrl); setSavedImageUrl(null); }}>
+        <div className="ios-save-overlay" onClick={() => setSavedImageUrl(null)}>
           <div className="ios-save-box" onClick={(e) => e.stopPropagation()}>
             <p className="ios-save-hint">Long press the image and tap <strong>Save to Photos</strong></p>
             <img src={savedImageUrl} alt="Card preview" className="ios-save-image" />
-            <button className="ios-save-close" onClick={() => { URL.revokeObjectURL(savedImageUrl); setSavedImageUrl(null); }}>Close</button>
+            <button className="ios-save-close" onClick={() => setSavedImageUrl(null)}>Close</button>
           </div>
         </div>
       )}
