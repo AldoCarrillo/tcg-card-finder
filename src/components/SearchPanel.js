@@ -5,6 +5,8 @@ export default function SearchPanel({
   setCardId,
   cardName,
   setCardName,
+  nameResults,
+  handleSelectResult,
   loading,
   handleSearch,
   quantity,
@@ -42,6 +44,16 @@ export default function SearchPanel({
                 {loading ? "Searching..." : "Search"}
               </button>
             </div>
+
+            {nameResults.length > 0 && (
+              <ul className="name-results-list">
+                {nameResults.map((c) => (
+                  <li key={c.id}>
+                    <button onClick={() => handleSelectResult(c)}>{c.name}</button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
 

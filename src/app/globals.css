@@ -561,6 +561,41 @@ select:focus {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
+/* ── Name search results list ── */
+
+.name-results-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  border: 1px solid #d4d4d4;
+  border-radius: 10px;
+  overflow: hidden;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #fff;
+}
+
+.name-results-list li + li {
+  border-top: 1px solid #eeeeee;
+}
+
+.name-results-list button {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  color: #1a1a1a;
+  padding: 9px 12px;
+  font-size: 13px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.name-results-list button:hover {
+  background: #fff4f4;
+  color: #c40000;
+}
+
 /* ── iOS save overlay ── */
 
 .ios-save-overlay {

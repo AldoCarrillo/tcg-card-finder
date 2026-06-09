@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { toPng } from "html-to-image";
-import { getYugiohCard, getYugiohCardByName } from "@/services/yugiohApi";
+import { getYugiohCard, searchYugiohCardsByName } from "@/services/yugiohApi";
 import { getProxiedImageUrl } from "@/utils/imageUtils";
 import AppHeader from "@/components/AppHeader";
 import SearchPanel from "@/components/SearchPanel";
@@ -15,6 +15,7 @@ export default function Home() {
 
   const [cardId, setCardId] = useState("");
   const [cardName, setCardName] = useState("");
+  const [nameResults, setNameResults] = useState([]);
   const [card, setCard] = useState(null);
   const [selectedArtworkIndex, setSelectedArtworkIndex] = useState(0);
   const [selectedSetIndex, setSelectedSetIndex] = useState(0);
@@ -40,6 +41,20 @@ export default function Home() {
     }
   }, [selectedSetIndex]);
 
+  function loadCard(result) {
+    setCard(result);
+    setSelectedArtworkIndex(0);
+    setSelectedSetIndex(0);
+    const preloadUrl = getProxiedImageUrl(result.card_images?.[0]?.image_url || "");
+    if (preloadUrl) new Image().src = preloadUrl;
+  }
+
+  function handleSelectResult(cardData) {
+    setNameResults([]);
+    setCardName(cardData.name);
+    loadCard(cardData);
+  }
+
   async function handleSearch() {
     const hasId = cardId.trim();
     const hasName = cardName.trim();
@@ -53,15 +68,19 @@ export default function Home() {
       setLoading(true);
       setError("");
       setCard(null);
-      setSelectedArtworkIndex(0);
-      setSelectedSetIndex(0);
+      setNameResults([]);
 
-      const result = hasId
-        ? await getYugiohCard(cardId)
-        : await getYugiohCardByName(cardName);
-      setCard(result);
-      const preloadUrl = getProxiedImageUrl(result.card_images?.[0]?.image_url || "");
-      if (preloadUrl) new Image().src = preloadUrl;
+      if (hasId) {
+        const result = await getYugiohCard(cardId);
+        loadCard(result);
+      } else {
+        const results = await searchYugiohCardsByName(cardName);
+        if (results.length === 1) {
+          loadCard(results[0]);
+        } else {
+          setNameResults(results);
+        }
+      }
     } catch (err) {
       setError(err.message || "Something went wrong.");
     } finally {
@@ -175,6 +194,7 @@ export default function Home() {
   function handleClear() {
     setCardId("");
     setCardName("");
+    setNameResults([]);
     setCard(null);
     setPreviewCards([]);
     setPreviewCardName("");
@@ -195,6 +215,8 @@ export default function Home() {
           setCardId={setCardId}
           cardName={cardName}
           setCardName={setCardName}
+          nameResults={nameResults}
+          handleSelectResult={handleSelectResult}
           loading={loading}
           handleSearch={handleSearch}
           quantity={quantity}
