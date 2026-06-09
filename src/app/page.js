@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import { toPng } from "html-to-image";
-import { getYugiohCard } from "@/services/yugiohApi";
+import { getYugiohCard, getYugiohCardByName } from "@/services/yugiohApi";
 import { getProxiedImageUrl } from "@/utils/imageUtils";
 import AppHeader from "@/components/AppHeader";
 import SearchPanel from "@/components/SearchPanel";
@@ -14,6 +14,7 @@ export default function Home() {
   const previewRef = useRef(null);
 
   const [cardId, setCardId] = useState("");
+  const [cardName, setCardName] = useState("");
   const [card, setCard] = useState(null);
   const [selectedArtworkIndex, setSelectedArtworkIndex] = useState(0);
   const [selectedSetIndex, setSelectedSetIndex] = useState(0);
@@ -40,6 +41,14 @@ export default function Home() {
   }, [selectedSetIndex]);
 
   async function handleSearch() {
+    const hasId = cardId.trim();
+    const hasName = cardName.trim();
+
+    if (!hasId && !hasName) {
+      setError("Enter a card name or ID to search.");
+      return;
+    }
+
     try {
       setLoading(true);
       setError("");
@@ -47,7 +56,9 @@ export default function Home() {
       setSelectedArtworkIndex(0);
       setSelectedSetIndex(0);
 
-      const result = await getYugiohCard(cardId);
+      const result = hasId
+        ? await getYugiohCard(cardId)
+        : await getYugiohCardByName(cardName);
       setCard(result);
       const preloadUrl = getProxiedImageUrl(result.card_images?.[0]?.image_url || "");
       if (preloadUrl) new Image().src = preloadUrl;
@@ -163,6 +174,7 @@ export default function Home() {
 
   function handleClear() {
     setCardId("");
+    setCardName("");
     setCard(null);
     setPreviewCards([]);
     setPreviewCardName("");
@@ -181,6 +193,8 @@ export default function Home() {
         <SearchPanel
           cardId={cardId}
           setCardId={setCardId}
+          cardName={cardName}
+          setCardName={setCardName}
           loading={loading}
           handleSearch={handleSearch}
           quantity={quantity}
