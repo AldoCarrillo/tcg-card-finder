@@ -12,6 +12,7 @@ import AppFooter from "@/components/AppFooter";
 
 export default function Home() {
   const previewRef = useRef(null);
+  const skipNameSearch = useRef(false);
 
   const [cardId, setCardId] = useState("");
   const [cardName, setCardName] = useState("");
@@ -41,6 +42,27 @@ export default function Home() {
     }
   }, [selectedSetIndex]);
 
+  useEffect(() => {
+    if (skipNameSearch.current) {
+      skipNameSearch.current = false;
+      return;
+    }
+    const query = cardName.trim();
+    if (query.length < 2) {
+      setNameResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchYugiohCardsByName(query);
+        setNameResults(results);
+      } catch {
+        setNameResults([]);
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [cardName]);
+
   function loadCard(result) {
     setCard(result);
     setSelectedArtworkIndex(0);
@@ -50,6 +72,7 @@ export default function Home() {
   }
 
   function handleSelectResult(cardData) {
+    skipNameSearch.current = true;
     setNameResults([]);
     setCardName(cardData.name);
     loadCard(cardData);
@@ -64,23 +87,15 @@ export default function Home() {
       return;
     }
 
+    if (!hasId) return; // name search is handled live by the useEffect
+
     try {
       setLoading(true);
       setError("");
       setCard(null);
       setNameResults([]);
-
-      if (hasId) {
-        const result = await getYugiohCard(cardId);
-        loadCard(result);
-      } else {
-        const results = await searchYugiohCardsByName(cardName);
-        if (results.length === 1) {
-          loadCard(results[0]);
-        } else {
-          setNameResults(results);
-        }
-      }
+      const result = await getYugiohCard(cardId);
+      loadCard(result);
     } catch (err) {
       setError(err.message || "Something went wrong.");
     } finally {
