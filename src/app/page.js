@@ -257,6 +257,21 @@ export default function Home() {
     }
   }
 
+  async function handleShareImage() {
+    if (!savedImageUrl) return;
+    try {
+      const arr = savedImageUrl.split(",");
+      const bstr = atob(arr[1]);
+      const u8arr = new Uint8Array(bstr.length);
+      for (let i = 0; i < bstr.length; i++) u8arr[i] = bstr.charCodeAt(i);
+      const fileName = (previewCardName?.replace(/[^a-z0-9]/gi, "-").toLowerCase() || "card-preview") + ".png";
+      const file = new File([u8arr], fileName, { type: "image/png" });
+      await navigator.share({ files: [file] });
+    } catch {
+      // user cancelled or share not supported — do nothing
+    }
+  }
+
   function handleClear() {
     setCardId("");
     setCardName("");
@@ -316,9 +331,12 @@ export default function Home() {
       {savedImageUrl && (
         <div className="ios-save-overlay" onClick={() => setSavedImageUrl(null)}>
           <div className="ios-save-box" onClick={(e) => e.stopPropagation()}>
-            <p className="ios-save-hint">Long press the image and tap <strong>Save to Photos</strong></p>
+            <p className="ios-save-hint">Tap <strong>Share</strong> to save the image to your phone</p>
             <img src={savedImageUrl} alt="Card preview" className="ios-save-image" />
-            <button className="ios-save-close" onClick={() => setSavedImageUrl(null)}>Close</button>
+            <div className="ios-save-actions">
+              <button className="ios-share-button" onClick={handleShareImage}>Share / Save Image</button>
+              <button className="ios-save-close" onClick={() => setSavedImageUrl(null)}>Close</button>
+            </div>
           </div>
         </div>
       )}

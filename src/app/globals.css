@@ -636,13 +636,30 @@ select:focus {
   display: block;
 }
 
-.ios-save-close {
+.ios-save-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.ios-share-button {
   height: 44px;
   width: 100%;
   border-radius: 10px;
   background: #c40000;
   color: #fff;
   font-weight: 800;
+  font-size: 14px;
+}
+
+.ios-save-close {
+  height: 44px;
+  width: 100%;
+  border-radius: 10px;
+  background: #333;
+  color: #aaa;
+  font-weight: 700;
   font-size: 14px;
 }
 
