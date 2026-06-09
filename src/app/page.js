@@ -139,6 +139,58 @@ export default function Home() {
     setError("");
   }
 
+  async function capturePreviewForIOS() {
+    const CARD_W = 200;
+    const CARD_H = Math.round(CARD_W * (614 / 421));
+    const OVERLAP = 55;
+    const PAD = 20;
+    const n = previewCards.length;
+    const scale = 2;
+
+    const canvasW = PAD * 2 + CARD_W + (n - 1) * (CARD_W - OVERLAP);
+    const canvasH = PAD * 2 + CARD_H;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = canvasW * scale;
+    canvas.height = canvasH * scale;
+    const ctx = canvas.getContext("2d");
+    ctx.scale(scale, scale);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvasW, canvasH);
+
+    for (let i = 0; i < n; i++) {
+      const res = await fetch(previewCards[i].imageUrl, { cache: "no-store" });
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, PAD + i * (CARD_W - OVERLAP), PAD, CARD_W, CARD_H);
+          URL.revokeObjectURL(objUrl);
+          resolve();
+        };
+        img.onerror = reject;
+        img.src = objUrl;
+      });
+    }
+
+    if (showSetBadge && previewCards[0]?.setCode) {
+      const text = previewCards[0].setCode;
+      ctx.font = "bold 11px -apple-system, sans-serif";
+      const textW = ctx.measureText(text).width;
+      const bw = textW + 10;
+      const bh = 18;
+      const bx = PAD + CARD_W - bw - 4;
+      const by = PAD + 4;
+      ctx.fillStyle = "rgba(0,0,0,0.72)";
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(text, bx + 5, by + 13);
+    }
+
+    return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+  }
+
   async function handleDownloadImage() {
     if (!previewRef.current || previewCards.length === 0) {
       setError("Add at least one card to the preview before downloading.");
@@ -153,44 +205,41 @@ export default function Home() {
       setDownloading(true);
       setError("");
 
-      const imgElements = Array.from(previewRef.current.querySelectorAll("img"));
-
-      await Promise.all(
-        imgElements.map(async (img, index) => {
-          const sourceUrl = previewCards[index]?.imageUrl;
-          if (!sourceUrl) return;
-          const res = await fetch(sourceUrl, { cache: "no-store" });
-          const blob = await res.blob();
-          const freshDataUrl = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.readAsDataURL(blob);
-          });
-          img.src = freshDataUrl;
-          await new Promise((resolve) => {
-            if (img.complete && img.naturalHeight !== 0) resolve();
-            else { img.onload = resolve; img.onerror = resolve; }
-          });
-        })
-      );
-
-      const dataUrl = await toPng(previewRef.current, {
-        cacheBust: false,
-        backgroundColor: "#ffffff",
-        pixelRatio: window.devicePixelRatio > 1 ? 1.5 : 2,
-      });
-
-      const cardFileName = previewCardName?.replace(/[^a-z0-9]/gi, "-").toLowerCase() || "card-preview";
-
-      // Convert data URL to blob URL — iOS Safari has a size cap on data URIs in <img>
-      const blob = await fetch(dataUrl).then((r) => r.blob());
-      const blobUrl = URL.createObjectURL(blob);
-
       if (isIOS) {
-        // iOS Safari blocks programmatic downloads — show image in an overlay instead.
-        // User long-presses the image and taps "Save to Photos".
+        const blob = await capturePreviewForIOS();
+        const blobUrl = URL.createObjectURL(blob);
         setSavedImageUrl(blobUrl);
       } else {
+        const imgElements = Array.from(previewRef.current.querySelectorAll("img"));
+
+        await Promise.all(
+          imgElements.map(async (img, index) => {
+            const sourceUrl = previewCards[index]?.imageUrl;
+            if (!sourceUrl) return;
+            const res = await fetch(sourceUrl, { cache: "no-store" });
+            const blob = await res.blob();
+            const freshDataUrl = await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.readAsDataURL(blob);
+            });
+            img.src = freshDataUrl;
+            await new Promise((resolve) => {
+              if (img.complete && img.naturalHeight !== 0) resolve();
+              else { img.onload = resolve; img.onerror = resolve; }
+            });
+          })
+        );
+
+        const dataUrl = await toPng(previewRef.current, {
+          cacheBust: false,
+          backgroundColor: "#ffffff",
+          pixelRatio: window.devicePixelRatio > 1 ? 1.5 : 2,
+        });
+
+        const cardFileName = previewCardName?.replace(/[^a-z0-9]/gi, "-").toLowerCase() || "card-preview";
+        const blob = await fetch(dataUrl).then((r) => r.blob());
+        const blobUrl = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.download = `${cardFileName}.png`;
         link.href = blobUrl;
