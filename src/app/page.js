@@ -28,6 +28,7 @@ export default function Home() {
   const [downloading, setDownloading] = useState(false);
   const [showSetBadge, setShowSetBadge] = useState(true);
   const [savedImageUrl, setSavedImageUrl] = useState(null);
+  const [shareUnsupported, setShareUnsupported] = useState(false);
 
   const selectedImageUrl = card?.card_images?.[selectedArtworkIndex]?.image_url || "";
   const selectedSet = card?.card_sets?.[selectedSetIndex];
@@ -259,16 +260,23 @@ export default function Home() {
 
   async function handleShareImage() {
     if (!savedImageUrl) return;
+    const arr = savedImageUrl.split(",");
+    const bstr = atob(arr[1]);
+    const u8arr = new Uint8Array(bstr.length);
+    for (let i = 0; i < bstr.length; i++) u8arr[i] = bstr.charCodeAt(i);
+    const fileName = (previewCardName?.replace(/[^a-z0-9]/gi, "-").toLowerCase() || "card-preview") + ".png";
+    const file = new File([u8arr], fileName, { type: "image/png" });
+
+    if (!navigator.canShare?.({ files: [file] })) {
+      setShareUnsupported(true);
+      return;
+    }
     try {
-      const arr = savedImageUrl.split(",");
-      const bstr = atob(arr[1]);
-      const u8arr = new Uint8Array(bstr.length);
-      for (let i = 0; i < bstr.length; i++) u8arr[i] = bstr.charCodeAt(i);
-      const fileName = (previewCardName?.replace(/[^a-z0-9]/gi, "-").toLowerCase() || "card-preview") + ".png";
-      const file = new File([u8arr], fileName, { type: "image/png" });
       await navigator.share({ files: [file] });
-    } catch {
-      // user cancelled or share not supported — do nothing
+    } catch (err) {
+      if (err?.name !== "AbortError") {
+        setShareUnsupported(true);
+      }
     }
   }
 
@@ -329,13 +337,22 @@ export default function Home() {
       <AppFooter />
 
       {savedImageUrl && (
-        <div className="ios-save-overlay" onClick={() => setSavedImageUrl(null)}>
+        <div className="ios-save-overlay" onClick={() => { setSavedImageUrl(null); setShareUnsupported(false); }}>
           <div className="ios-save-box" onClick={(e) => e.stopPropagation()}>
-            <p className="ios-save-hint">Tap <strong>Share</strong> to save the image to your phone</p>
+            {shareUnsupported ? (
+              <p className="ios-save-hint">
+                Saving is not supported in this browser.<br />
+                Tap <strong>···</strong> or the browser menu and select <strong>Open in Safari</strong>, then download from there.
+              </p>
+            ) : (
+              <p className="ios-save-hint">Tap <strong>Share</strong> to save the image to your phone</p>
+            )}
             <img src={savedImageUrl} alt="Card preview" className="ios-save-image" />
             <div className="ios-save-actions">
-              <button className="ios-share-button" onClick={handleShareImage}>Share / Save Image</button>
-              <button className="ios-save-close" onClick={() => setSavedImageUrl(null)}>Close</button>
+              {!shareUnsupported && (
+                <button className="ios-share-button" onClick={handleShareImage}>Share / Save Image</button>
+              )}
+              <button className="ios-save-close" onClick={() => { setSavedImageUrl(null); setShareUnsupported(false); }}>Close</button>
             </div>
           </div>
         </div>
